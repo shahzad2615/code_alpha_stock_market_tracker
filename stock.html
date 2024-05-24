@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        #stockData, #news {
+            margin-top: 20px;
+        }
+        #stockChart {
+            width: 100%;
+            height: 400px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stock Market Tracker</h1>
+        <input type="text" id="stockSymbol" placeholder="Enter Stock Symbol">
+        <button id="getStockData">Get Stock Data</button>
+        <div id="stockData"></div>
+        <canvas id="stockChart"></canvas>
+        <div id="news"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.getElementById('getStockData').addEventListener('click', () => {
+            const stockSymbol = document.getElementById('stockSymbol').value.trim().toUpperCase();
+            if (stockSymbol) {
+                getStockData(stockSymbol);
+                getStockNews(stockSymbol);
+            } else {
+                alert('Please enter a valid stock symbol.');
+            }
+        });
+
+        async function getStockData(symbol) {
+            const apiKey = 'YOUR_API_KEY'; // Replace with your API key
+            const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data['Time Series (Daily)']) {
+                    const timeSeries = data['Time Series (Daily)'];
+                    const dates = Object.keys(timeSeries).slice(0, 30).reverse();
+                    const prices = dates.map(date => parseFloat(timeSeries[date]['4. close']));
+
+                    document.getElementById('stockData').innerHTML = `
+                        <h2>${symbol.toUpperCase()}</h2>
+                        <p>Latest Price: ${prices[prices.length - 1]}</p>
+                    `;
+
+                    renderChart(dates, prices);
+                } else {
+                    alert('Invalid stock symbol or API limit reached.');
+                }
+            } catch (error) {
+                console.error('Error fetching stock data:', error);
+                alert('Error fetching stock data. Please try again later.');
+            }
+        }
+
+        async function getStockNews(symbol) {
+            const apiKey = 'YOUR_NEWS_API_KEY'; // Replace with your News API key
+            const url = `https://newsapi.org/v2/everything?q=${symbol}&apiKey=${apiKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const articles = data.articles;
+
+                const newsDiv = document.getElementById('news');
+                newsDiv.innerHTML = '<h2>Latest News</h2>';
+
+                articles.slice(0, 5).forEach(article => {
+                    const articleDiv = document.createElement('div');
+                    articleDiv.innerHTML = `
+                        <h3>${article.title}</h3>
+                        <p>${article.description}</p>
+                        <a href="${article.url}" target="_blank">Read more</a>
+                    `;
+                    newsDiv.appendChild(articleDiv);
+                });
+            } catch (error) {
+                console.error('Error fetching news:', error);
+                alert('Error fetching news. Please try again later.');
+            }
+        }
+
+        function renderChart(dates, prices) {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: prices,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: dates
+                        },
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
